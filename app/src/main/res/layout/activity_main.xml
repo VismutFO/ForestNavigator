@@ -53,6 +53,7 @@
                 android:layout_gravity="top|start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="@color/style_picker_blue"
 
                 android:text="123" />
 
@@ -61,9 +62,17 @@
                 android:layout_gravity="top"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="@color/style_picker_blue"
+
                 android:text="456" />
 
         </LinearLayout>
+        <ProgressBar
+            android:id="@+id/progressSpinner"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
     </FrameLayout>
 
 
