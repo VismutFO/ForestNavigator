@@ -10,12 +10,14 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -34,8 +36,8 @@ public class MainActivity extends AppCompatActivity {
     private Network network;
 
     private volatile Bitmap source, result;
-    private Drawable bitmapDrawable;
-    private int width, height;
+    private volatile Drawable bitmapDrawable;
+    int width, height;
 
     private boolean needToDisplayUser = false;
 
@@ -44,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageView networkResult;
 
     private ProgressBar spinner;
+
+    private boolean[][] usedPixels;
 
     boolean getNeedToDisplayUser() {
         return needToDisplayUser;
@@ -62,7 +66,13 @@ public class MainActivity extends AppCompatActivity {
                 result.setPixel(i, j, Color.TRANSPARENT);
             }
         }
-        bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, height, false));
+        if (width < height) {
+            bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, width, false));
+        }
+        else {
+            bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, height, height, false));
+
+        }
         networkResult.setImageDrawable(bitmapDrawable);
         networkResult.invalidate();
 
@@ -74,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d("<Layers>", "OnCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         needToDisplayUser = false;
 
@@ -141,20 +152,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_LOCATION: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    needToDisplayUser = true;
-                }
-                else {
-                    Log.d("<Layers>", "Something wrong with permission");
-                }
+        if (requestCode == MY_PERMISSIONS_REQUEST_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                needToDisplayUser = true;
+            } else {
+                Log.d("<Layers>", "Something wrong with permission");
             }
-
         }
     }
 
     private void initAllForNetwork() {
+        usedPixels = new boolean[512][512];
         Point size = new Point();
         getWindowManager().getDefaultDisplay().getSize(size);
         width = size.x;
@@ -179,7 +187,13 @@ public class MainActivity extends AppCompatActivity {
         latitude = (TextView)findViewById(R.id.XCoordinate);
         longitude = (TextView)findViewById(R.id.YCoordinate);
 
-        bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, height, false));
+        if (width < height) {
+            bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, width, false));
+        }
+        else {
+            bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, height, height, false));
+
+        }
         networkResult = findViewById(R.id.networkResult);
         networkResult.setImageDrawable(bitmapDrawable);
 
@@ -203,28 +217,93 @@ public class MainActivity extends AppCompatActivity {
                         result.setPixel(i, j, Color.TRANSPARENT);
                     }
                 }
-                bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, height, false));
+                if (width < height) {
+                    bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, width, false));
+                }
+                else {
+                    bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, height, height, false));
+
+                }
                 networkResult.setImageDrawable(bitmapDrawable);
                 networkResult.invalidate();
             }
         });
     }
 
+    private int countNonEmpty(int i, int j) {
+        usedPixels[i][j] = true;
+        int count = 1;
+        if (i - 1 >= 0 && !usedPixels[i - 1][j] && result.getPixel(i - 1, j) != Color.TRANSPARENT) {
+            count += countNonEmpty(i - 1, j);
+        }
+        if (j - 1 >= 0 && !usedPixels[i][j - 1] && result.getPixel(i, j - 1) != Color.TRANSPARENT) {
+            count += countNonEmpty(i, j - 1);
+        }
+        if (i + 1 < 512 && !usedPixels[i + 1][j] && result.getPixel(i + 1, j) != Color.TRANSPARENT) {
+            count += countNonEmpty(i + 1, j);
+        }
+        if (j + 1 < 512 && !usedPixels[i][j + 1] && result.getPixel(i, j + 1) != Color.TRANSPARENT) {
+            count += countNonEmpty(i, j + 1);
+        }
+        return count;
+    }
+
+    private void clearNonEmpty(int i, int j) {
+        result.setPixel(i, j, Color.TRANSPARENT);
+        if (i - 1 >= 0 && result.getPixel(i - 1, j) != Color.TRANSPARENT) {
+            clearNonEmpty(i - 1, j);
+        }
+        if (j - 1 >= 0 && result.getPixel(i, j - 1) != Color.TRANSPARENT) {
+            clearNonEmpty(i, j - 1);
+        }
+        if (i + 1 < 512 && result.getPixel(i + 1, j) != Color.TRANSPARENT) {
+            clearNonEmpty(i + 1, j);
+        }
+        if (j + 1 < 512 && result.getPixel(i, j + 1) != Color.TRANSPARENT) {
+            clearNonEmpty(i, j + 1);
+        }
+    }
+
     void onNetworkEnd(float[] scores) {
+        Log.d("<Layers>", "scores size: " + scores.length);
         for (int i = 0; i < 512; i++) {
             for (int j = 0; j < 512; j++) {
-                if (scores[i * 512 + j] < scores[262144 + i * 512 + j]) {
-                    result.setPixel(i, j, 0xA00000AA);
+                usedPixels[i][j] = false;
+                if (scores[i * 512 + j] < scores[i * 512 + j + 262144]) {
+                    result.setPixel(j, i, 0xA00000AA);
                 } else {
-                    result.setPixel(i, j, Color.TRANSPARENT);
+                    result.setPixel(j, i, Color.TRANSPARENT);
                 }
-
             }
         }
+        for (int i = 0; i < 512; i++) {
+            for (int j = 0; j < 512; j++) {
+                if (result.getPixel(i, j) != Color.TRANSPARENT && !usedPixels[i][j]) {
+                    int count = countNonEmpty(i, j);
+                    if (count < 480) {
+                        clearNonEmpty(i, j);
+                    }
+                }
+            }
+        }
+        //result = RotateBitmap(result, 190.);
         Log.d("<Layers>", "filledNewResult");
         spinner.setVisibility(View.INVISIBLE);
-        bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, height, false));
+        if (width < height) {
+            bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, width, width, false));
+        }
+        else {
+            bitmapDrawable = new BitmapDrawable(getResources(), Bitmap.createScaledBitmap(result, height, height, false));
+        }
         networkResult.setImageDrawable(bitmapDrawable);
+        Log.d("<Layers>", "addedNewResult");
         networkResult.invalidate();
+    }
+
+    public static Bitmap RotateBitmap(Bitmap source, double angle)
+    {
+        Matrix matrix = new Matrix();
+        matrix.postRotate((float) angle);
+        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
     }
 }

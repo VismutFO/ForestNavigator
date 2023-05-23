@@ -65,7 +65,16 @@ public class Network {
 
                 Log.d("<Layers>", "InRun");
 
-                Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmapTemp, 512, 512, false);
+
+                Bitmap resizedBitmap;
+                if (owner.width < owner.height) {
+                    resizedBitmap = Bitmap.createBitmap(bitmapTemp, 0, (owner.height - owner.width) / 2, owner.width, owner.width);
+                }
+                else {
+                    resizedBitmap = Bitmap.createBitmap(bitmapTemp, (owner.width - owner.height) / 2, 0, owner.height, owner.height);
+                }
+
+                resizedBitmap = Bitmap.createScaledBitmap(resizedBitmap, 512, 512, false);
 
                 Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap,
                         NO_MEAN_RGB, NO_STD_RGB);
@@ -78,7 +87,7 @@ public class Network {
                 final Tensor outputTensor = Objects.requireNonNull(outTensors.get("out")).toTensor();
 
                 Log.d("<Layers>", "onNetworkEnd");
-                float[] scores = outputTensor.getDataAsFloatArray(); // ?
+                float[] scores = outputTensor.getDataAsFloatArray();
                 Log.d("<Layers>", "turnedTensorToArray");
 
                 owner.onNetworkEnd(scores);
