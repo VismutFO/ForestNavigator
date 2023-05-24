@@ -232,6 +232,7 @@ public class MainActivity extends AppCompatActivity {
 
     private int countNonEmpty(int i, int j) {
         usedPixels[i][j] = true;
+        Log.d("<NonEmpty>", Integer.toString(i) + " " + Integer.toString(j));
         int count = 1;
         if (i - 1 >= 0 && !usedPixels[i - 1][j] && result.getPixel(i - 1, j) != Color.TRANSPARENT) {
             count += countNonEmpty(i - 1, j);
@@ -280,13 +281,12 @@ public class MainActivity extends AppCompatActivity {
             for (int j = 0; j < 512; j++) {
                 if (result.getPixel(i, j) != Color.TRANSPARENT && !usedPixels[i][j]) {
                     int count = countNonEmpty(i, j);
-                    if (count < 480) {
+                    if (count < 680) {
                         clearNonEmpty(i, j);
                     }
                 }
             }
         }
-        //result = RotateBitmap(result, 190.);
         Log.d("<Layers>", "filledNewResult");
         spinner.setVisibility(View.INVISIBLE);
         if (width < height) {
@@ -298,12 +298,5 @@ public class MainActivity extends AppCompatActivity {
         networkResult.setImageDrawable(bitmapDrawable);
         Log.d("<Layers>", "addedNewResult");
         networkResult.invalidate();
-    }
-
-    public static Bitmap RotateBitmap(Bitmap source, double angle)
-    {
-        Matrix matrix = new Matrix();
-        matrix.postRotate((float) angle);
-        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
     }
 }
